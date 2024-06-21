@@ -80,7 +80,53 @@ result_land_pm2_5 = grouped_dataframes[1][[f'{col}_int' for col in columns_to_pr
 fig3 = px.line(result_land_pm2_5, title="Luftqualität auf dem Land nach PM2.5")
 ###city-PM2.5
 result_city_pm2_5 = grouped_dataframes[3][[f'{col}_int' for col in columns_to_process]]
+#---------------------------------------------------------
 fig4 = px.line(result_city_pm2_5, title="Luftqualität in der Stadt nach PM2.5")
+## Durchschnitt von Boxen
+avg_landpm10 = grouped_dataframes[0].groupby('datum')[columns_to_process].mean()
+avg_landpm25 = grouped_dataframes[1].groupby('datum')[columns_to_process].mean()
+avg_citypm10 = grouped_dataframes[2].groupby('datum')[columns_to_process].mean()
+avg_citypm25 = grouped_dataframes[3].groupby('datum')[columns_to_process].mean()
+
+avg_landpm10 = avg_landpm10.reset_index()
+avg_landpm25 = avg_landpm25.reset_index()
+avg_citypm10 = avg_citypm10.reset_index()
+avg_citypm25 = avg_citypm25.reset_index()
+
+avg_landpm10['average_value'] = avg_landpm10[columns_to_process].mean(axis=1)
+avg_landpm25['average_value'] = avg_landpm25[columns_to_process].mean(axis=1)
+avg_citypm10['average_value'] = avg_citypm10[columns_to_process].mean(axis=1)
+avg_citypm25['average_value'] = avg_citypm25[columns_to_process].mean(axis=1)
+
+avg_landpm10 = avg_landpm10.dropna(subset="average_value")
+avg_landpm25 = avg_landpm25.dropna(subset="average_value")
+avg_citypm10 = avg_citypm10.dropna(subset="average_value")
+avg_citypm25 = avg_citypm25.dropna(subset="average_value")
+
+dfs = [avg_landpm10, avg_landpm25, avg_citypm10, avg_citypm25] # Zur weiterverarbeitung und zum Iterieren durch alle Dataframes
+###visualisierung: Linien-Diagramm
+#---------------------------------------------------------
+## Test: Mergen von Dataframes
+combined_df = dfs[0][['datum', 'average_value']].rename(columns={'average_value': 'average_value_df1'})
+
+for i, df in enumerate(dfs[1:], start=2):
+    combined_df = combined_df.merge(df[['datum', 'average_value']].rename(columns={'average_value': f'average_value_df{i}'}), on='datum')
+
+column_rename_dict = {
+    "average_value_df1": "LandPM10",
+    "average_value_df2": "LandPM2_5",
+    "average_value_df3": "CityPM10",
+    "average_value_df4": "CityPM2_5"
+}
+
+fig_test = px.line(combined_df, x="datum", y=combined_df.columns[1:])
+fig_test.for_each_trace(lambda t: t.update(name=column_rename_dict[t.name]))
+#---------------------------------------------------------
+fig5 = px.line(avg_landpm10, x="datum", y="average_value", title="Durchschnittliche Luftqualität auf dem Land | PM10")
+fig6 = px.line(avg_landpm25, x="datum", y="average_value", title="Durchschnittliche Luftqualität auf dem Land | PM2.5")
+fig7 = px.line(avg_citypm10, x="datum", y="average_value")
+fig8 = px.line(avg_citypm25, x="datum", y="average_value")
+#---------------------------------------------------------
 #---------------------------------------------------------
 #dash-layout
 app = Dash(__name__)
@@ -134,6 +180,12 @@ app.layout = html.Div([
         dcc.Graph(id="Stationen-Land-PM2.5", figure=fig3),
         dcc.Graph(id="Stationen-City-PM2.5", figure=fig4)
     ], style={"display": "flex"}),
+    html.Div([
+        html.H3("Durchschnitt aller Boxen nach Attribut")
+    ], style={"text-align": "center"}),
+    html.Div([
+        dcc.Graph(id="Average-of-Boxes-PM10", figure=fig_test),
+    ]),
     #------------------------------------------------------
 ])
 df_interactive = pd.DataFrame(columns=["timestamp", "value"])
