@@ -143,7 +143,9 @@ app.layout = html.Div([
     ]),
     html.Div([
         "Live-Tracking BoxID: ",
-        dcc.Input(id="my-input", value="5c4eee5235809500190463cc")
+        dcc.Input(id="my-input", value="5c4eee5235809500190463cc"),
+        html.Br(),
+        "(Achtung! Inaktive Boxen konnten nicht rausgefiltert werden - Bei Fehler, andere Box auswählen)"
     ], style={"text-align": "center"}),
     html.Div([
         dcc.Graph(id="live-graph"),
