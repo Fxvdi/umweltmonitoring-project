@@ -16,6 +16,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
 from statsmodels.tsa.holtwinters import SimpleExpSmoothing
+import json
 #---------------------------------------------------------
 #everything about styling
 custom_icon = dict(
@@ -225,6 +226,14 @@ app.layout = html.Div([
             html.Tr([html.Td("exponentielle Glättung"), html.Td(id='exp-smooth')]),
         ]),
     ], style={"text-align": "center"}),
+    html.Div([
+        html.H3("LSTM-Modell"),
+    ], style={"text-align": "center"}),
+    html.Div([
+        dcc.Graph(
+            id="lstm-model",
+        )
+    ])
     #------------------------------------------------------
     # Callback/interaktives Livetracking
 ])
@@ -264,6 +273,7 @@ def update_graph(n,my_input_value):
     Output("fool", "children"),
     Output("seasonal-fool", "children"),
     Output("exp-smooth", "children"),
+    Output("lstm-model", "figure"),
     Input("select", "value")
 )
 def update_prediction_graph(my_select_value):
@@ -405,9 +415,25 @@ def update_prediction_graph(my_select_value):
     mae_naive = mean_absolute_error(test, naive_predictions)
     mae_seasonal_naive = mean_absolute_error(test, seasonal_naive_predictions)
     mae_exp_smooth = mean_absolute_error(test, exp_smooth_predictions)
+
+    if my_select_value == "land_PM10":
+        with open("prediction_land_PM10.json", "r") as f:
+            fig_json = f.read()
+        fig_lstm = go.Figure(json.loads(fig_json))
+    elif my_select_value == "land_PM2_5":
+        with open("prediction_land_PM2_5.json", "r") as f:
+            fig_json = f.read()
+        fig_lstm = go.Figure(json.loads(fig_json))
+    elif my_select_value == "stadt_PM10":
+        with open("prediction_stadt_PM10.json", "r") as f:
+            fig_json = f.read()
+        fig_lstm = go.Figure(json.loads(fig_json))
+    elif my_select_value == "stadt_PM2_5":
+        with open("prediction_stadt_PM2_5.json", "r") as f:
+            fig_json = f.read()
+        fig_lstm = go.Figure(json.loads(fig_json))
     # Grafik und Werte anzeigen
-    return fig_predict, mae_arith, mae_naive, mae_seasonal_naive, mae_exp_smooth 
-#--------------------------------------------------
+    return fig_predict, mae_arith, mae_naive, mae_seasonal_naive, mae_exp_smooth, fig_lstm
 #--------------------------------------------------
 if __name__=="__main__":
     app.run_server(debug=True)
