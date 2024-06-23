@@ -1,11 +1,21 @@
 #Libraries/Extensions
-from dash import Dash, dcc, html, Input, Output, callback
-import dash_leaflet as dl
+from dash import Dash, dcc, html, Input, Output, callback, dash_table
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import requests
 from datetime import datetime
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from numpy.linalg import norm
+from dtaidistance import dtw
+from fastdtw import fastdtw
+import statsmodels.api as sm
+from statsmodels.tsa.seasonal import seasonal_decompose
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
+from statsmodels.tsa.holtwinters import SimpleExpSmoothing
 #---------------------------------------------------------
 #everything about styling
 custom_icon = dict(
@@ -127,6 +137,7 @@ fig6 = px.line(avg_landpm25, x="datum", y="average_value", title="Durchschnittli
 fig7 = px.line(avg_citypm10, x="datum", y="average_value")
 fig8 = px.line(avg_citypm25, x="datum", y="average_value")
 #---------------------------------------------------------
+df_stats = pd.read_csv("stats_df.csv")
 #---------------------------------------------------------
 #dash-layout
 app = Dash(__name__)
@@ -161,10 +172,6 @@ app.layout = html.Div([
         html.H2("Analyse ausgewählter Boxen")
     ], style={"text-align": "center"}),
     html.Div([
-        dcc.Dropdown(["Box1", "Box2", "Box3", "Box4", "Box5"], "Box1", id="landboxes"),
-        dcc.Dropdown(["Box1", "Box2", "Box3", "Box4", "Box5"], "Box1", id="cityboxes"),
-    ], style={"width": "40%"}),
-    html.Div([
         dcc.Graph(id="available-data-land10", figure=funnel_land_10),
         dcc.Graph(id="available-data-city10", figure=funnel_city_10),
     ], style={"display": "flex"}),
@@ -175,6 +182,14 @@ app.layout = html.Div([
         dcc.Graph(id="Stationen-Land-PM10", figure=fig1),
         dcc.Graph(id="Stationen-City-PM10", figure=fig2)
     ], style={"display": "flex"}),
+    html.Div([
+        html.H3("Basic Analysis"),
+        dash_table.DataTable(
+            id="table",
+            columns=[{"name": i, "id": i} for i in df_stats.columns],
+            data=df_stats.to_dict("records")
+        )
+    ], style={"text-align": "center"}),
     html.Div([
         html.H3("Analyse: PM2.5")
     ], style={"text-align": "center"}),
@@ -188,7 +203,30 @@ app.layout = html.Div([
     html.Div([
         dcc.Graph(id="Average-of-Boxes-PM10", figure=fig_test),
     ]),
+    html.Div([
+        html.H3("Vorhersage"),
+        dcc.Dropdown(
+            ["land_PM10", "land_PM2_5", "stadt_PM10", "stadt_PM2_5"],
+            value="land_PM10",
+            id="select",
+            
+        )
+    ], style={"text-align": "center"}),
+    html.Div([
+        dcc.Graph(id="prediction-graph")
+    ]),
+    html.Div([
+        html.H4("Mean Absolute Error"),
+
+        html.Table([
+            html.Tr([html.Td("Arithmetisches Mittel: "), html.Td(id='arith')]),
+            html.Tr([html.Td("Naive Methode: "), html.Td(id='fool')]),
+            html.Tr([html.Td("Saisonal Naiv"), html.Td(id='seasonal-fool')]),
+            html.Tr([html.Td("exponentielle Glättung"), html.Td(id='exp-smooth')]),
+        ]),
+    ], style={"text-align": "center"}),
     #------------------------------------------------------
+    # Callback/interaktives Livetracking
 ])
 df_interactive = pd.DataFrame(columns=["timestamp", "value"])
 @callback(
@@ -218,15 +256,158 @@ def update_graph(n,my_input_value):
     fig = go.Figure(data=[trace_pm2_5, trace_pm10], layout=layout)
     #fig = px.scatter(x=df_interactive["timestamp"], y=df_interactive["value1", "value0"], mode="lines+markers", title="Real-time Sensor Data")
     return fig
+#---------------------------------------------------
+# Callback: Selektion von Vorhergesagtem Attribut
+@callback(
+    Output("prediction-graph", "figure"),
+    Output("arith", "children"),
+    Output("fool", "children"),
+    Output("seasonal-fool", "children"),
+    Output("exp-smooth", "children"),
+    Input("select", "value")
+)
+def update_prediction_graph(my_select_value):
+    df_predict = pd.read_csv(f"werte_daten/werte_{my_select_value}.csv")
+    # Datumsspalte in DateTime-Objekte konvertieren
+    df_predict['createdAt'] = pd.to_datetime(df_predict['createdAt'])
 
-# @callback(
-#     Output("available-data-land", "figure"),
-#     Output("available-data-city", "figure"),
-#     Input("landboxes", "value"),
-#     Input("cityboxes", "value")
-# )
-# def update_graph_availability(landboxes_value, cityboxes_value):
-#     if landboxes_value == ""
+    # Mittelwert der Spalten 'value_1', 'value_2' und 'value_3' berechnen
+    df_predict[f'{my_select_value}'] = df_predict[['value_1', 'value_2', 'value_3', 'value_4', 'value_5']].mean(axis=1)
+
+    # DataFrame auf ausgewählte Spalten reduzieren und createdAt als Index setzen
+    selected_df1 = df_predict[['createdAt', f'{my_select_value}']].set_index('createdAt')
+    # Duplikate im Index entfernen
+    selected_df1 = selected_df1[~selected_df1.index.duplicated(keep='first')]
+    # Remove rows with NaN values
+    selected_df1 = selected_df1.dropna()
+#----------------------------------------------------
+#interne Methoden für die Prediction
+    # 1. Arithmetisches Mittel
+    def arithmetisches_mittel(train, test):
+        mean_value = train.mean()
+        predictions['Arithmetisches Mittel'] = mean_value
+        forecasts['Arithmetisches Mittel'] = mean_value
+        return np.full_like(test, fill_value=mean_value)
+
+    # 2. Naive Methode
+    def naive_methode(train, test):
+        last_value = train.iloc[-1]
+        predictions['Naive Methode'] = last_value
+        last_value = test.iloc[-1]
+        forecasts['Naive Mathode'] = last_value
+        return np.full_like(test, fill_value=last_value)
+
+    # 3. Saisonale naive Vorhersage (Vorhersage basierend auf dem letzten bekannten Wert derselben Saison)
+    def saisonale_naive(train, test):
+        # Die letzten bekannten Werte jeder Saison (Monat) aus dem Trainingsdatensatz erhalten
+        seasonal_last_values = train.groupby(level='Monat').apply(lambda x: x.tail(1)).values
+        predictions['Saisonale naive'] = np.tile(seasonal_last_values, n_test // 12 + 1)[:n_test]
+        n_forecast = len(forecasts.index)
+        seasonal_last_values_test = test.groupby(level='Monat').apply(lambda x: x.tail(1)).values
+        # Für die Vorhersagen der Zukunft, beginnt es im Juni
+        start_month = 5
+        # Berechne den Index des Startmonats in der Liste
+        start_index = (start_month - 1) % 12
+        # Verschiebe die Liste so, dass sie mit dem Startmonat beginnt
+        shifted_values = np.concatenate((seasonal_last_values_test[start_index:], seasonal_last_values_test[:start_index]))
+        forecasts['Saisonale naive'] = np.tile(shifted_values, n_forecast // 12 + 1)[:n_forecast]
+        return predictions['Saisonale naive'].values
+
+    def exponentielle_glättung(train, test):
+        prediction = pd.Series(index=test.index)
+        prediction.iloc[0] = train.iloc[-1]  # Initialisierung des ersten Werts
+        # den Alpha Wert festlegen
+        alpha = 0.5
+        for i in range(1, len(test)):
+            prediction.iloc[i] = alpha*test.iloc[i - 1] + alpha*(1 - alpha)**2 * test.iloc[i - 2] + alpha*(1 - alpha)**3 * test.iloc[i - 3]
+        predictions["Exponentielle Glättung"] = prediction
+        forecast = pd.Series(index=forecasts.index)
+        # hier gibt es andere Alphawerte, da es in meinen Augen nur Sinn macht, wenn es insgesamt 1 ist
+        # Da die Werte sonst immer kleiner werden
+        alpha1 = 0.58
+        alpha2 = 0.29
+        alpha3 = 0.13
+        # es wird unterschieden, ob man noch den Index von den Testdaten benutzen muss oder nur die Forecast-Daten
+        for i in range(0, len(forecast.index)):
+            if i == 0:
+                forecast.iloc[i] = alpha1*test.iloc[-1] + alpha2* test.iloc[-2] + alpha3* test.iloc[-3]
+            elif i == 1:
+                forecast.iloc[i] = alpha1*forecast.iloc[i - 1] + alpha2* test.iloc[-1] + alpha3* test.iloc[-2]
+            elif i == 2:
+                forecast.iloc[i] = alpha1*forecast.iloc[i - 1] + alpha2* forecast.iloc[i - 2] + alpha3* test.iloc[-1]
+            else:
+                forecast.iloc[i] = alpha1*forecast.iloc[i - 1] + alpha2* forecast.iloc[i - 2] + alpha3* forecast.iloc[i - 3]
+        forecasts["Exponentielle Glättung"] = forecast
+        return predictions['Exponentielle Glättung'].values
+#----------------------------------------------------
+    # Erstellen von Spalten für Jahr und Monat
+    selected_df1['Jahr'] = selected_df1.index.year
+    selected_df1['Monat'] = selected_df1.index.month
+
+    # Gruppierung nach Jahr und Monat, Berechnung des Durchschnitts
+    monthly_mean = selected_df1.groupby(['Jahr', 'Monat']).mean()
+
+    # Aufteilung in Trainings- und Testdaten
+    train = monthly_mean[monthly_mean.index < (2023, 6)][f'{my_select_value}']
+    test = monthly_mean[monthly_mean.index >= (2023, 6)][f'{my_select_value}']
+
+    # Anzahl der Testdatenpunkte
+    n_test = len(test)
+
+    # Platzhalter für Vorhersagen
+    predictions = pd.DataFrame(index=test.index)
+
+    # Erstellen des Index mit dem gewünschten Datumbereich für die Vorhersage
+    forecast_index = pd.period_range(start='2024-06', end='2025-06', freq='M')
+
+    # Erstellen des leeren DataFrames mit dem Index
+    forecasts = pd.DataFrame(index=forecast_index)
+
+    # die Funktionen werden nun ausgeführt und die Dataframes mit den berechneten Werten gefüllt
+    arith_predictions = arithmetisches_mittel(train, test)
+    naive_predictions = naive_methode(train, test)
+    seasonal_naive_predictions = saisonale_naive(train, test)
+    exp_smooth_predictions = exponentielle_glättung(train, test)
+
+    # Reset index für Predictions DataFrame
+    predictions_reset = predictions.reset_index()
+
+    # Schmelzen des DataFrames für Plotly Express
+    predictions_melted = predictions_reset.melt(id_vars=['Jahr', 'Monat'], 
+                                                value_vars=['Arithmetisches Mittel', 'Naive Methode', 'Saisonale naive', 'Exponentielle Glättung'],
+                                                var_name='Methode', 
+                                                value_name=f'{my_select_value}')
+
+
+    # das Datum wird in das richtige Format gebracht, für das bessere darstellen beider Dataframes
+    predictions_melted['Datum'] = pd.to_datetime(predictions_melted['Jahr'].astype(str) + '-' + predictions_melted['Monat'].astype(str))
+
+    # Liniengrafik erstellen
+    fig_predict = px.line(predictions_melted, x='Datum', y=f'{my_select_value}', color='Methode',
+                labels={f'{my_select_value}': f'{my_select_value}', 'Methode': 'Methode', 'Datum': 'Datum'},
+                title=f'Vergleich der Vorhersagemethoden für Werte {my_select_value}')
+
+    # Das Datum wird nun auch in das richtige Format gebracht
+    test.index = test.index.map(lambda x: f'{x[0]}-{x[1]:02d}')
+
+    # Hinzufügen der Testdaten
+    fig_predict.add_scatter(x=test.index, y=test.values, mode='lines', name='Testdaten (2023)')
+
+    # nun wird auch der Index des Forecasts zu dem gleichen Format
+    forecasts.index = forecasts.index.to_timestamp()
+    # Linien für den Forecast erstellen
+    fig_predict.add_trace(go.Scatter(x=forecasts.index, y=forecasts['Arithmetisches Mittel'], mode='lines', name='Arithmetisches Mittel Forecast'))
+    fig_predict.add_trace(go.Scatter(x=forecasts.index, y=forecasts['Naive Mathode'], mode='lines', name='Naive Methode Forecast'))
+    fig_predict.add_trace(go.Scatter(x=forecasts.index, y=forecasts['Saisonale naive'], mode='lines', name='Saisonale naive Forecast'))
+    fig_predict.add_trace(go.Scatter(x=forecasts.index, y=forecasts['Exponentielle Glättung'], mode='lines', name='Exponentielle Glättung Forecast'))
+
+    mae_arith = mean_absolute_error(test, arith_predictions)
+    mae_naive = mean_absolute_error(test, naive_predictions)
+    mae_seasonal_naive = mean_absolute_error(test, seasonal_naive_predictions)
+    mae_exp_smooth = mean_absolute_error(test, exp_smooth_predictions)
+    # Grafik und Werte anzeigen
+    return fig_predict, mae_arith, mae_naive, mae_seasonal_naive, mae_exp_smooth 
+#--------------------------------------------------
 #--------------------------------------------------
 if __name__=="__main__":
     app.run_server(debug=True)
