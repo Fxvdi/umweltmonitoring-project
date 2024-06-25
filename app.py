@@ -5,17 +5,8 @@ import plotly.graph_objects as go
 import pandas as pd
 import requests
 from datetime import datetime
-import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
-from numpy.linalg import norm
-from dtaidistance import dtw
-from fastdtw import fastdtw
-import statsmodels.api as sm
-from statsmodels.tsa.seasonal import seasonal_decompose
-from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
-from statsmodels.tsa.holtwinters import SimpleExpSmoothing
 import json
 #---------------------------------------------------------
 #everything about styling
