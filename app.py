@@ -129,7 +129,7 @@ fig6 = px.line(avg_landpm25, x="datum", y="average_value", title="Durchschnittli
 fig7 = px.line(avg_citypm10, x="datum", y="average_value")
 fig8 = px.line(avg_citypm25, x="datum", y="average_value")
 #---------------------------------------------------------
-df_stats = pd.read_csv("stats_df.csv")
+df_stats = pd.read_csv("werte_daten/stats_df.csv")
 #---------------------------------------------------------
 #dash-layout
 app = Dash(__name__)
