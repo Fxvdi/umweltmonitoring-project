@@ -59,9 +59,9 @@ sorted_value_counts_df_city10 = value_counts_df.sort_values(by='Count', ascendin
 #---------------------------------------------------------
 #static figures
 #funnel: analyzing available Data (no Null-Values)
-funnel_land_10 = px.funnel(sorted_value_counts_df_land10, x='Count', y='Boxen', title="Verfügbare Daten bei ländlichen SenseBoxen")
+funnel_land_10 = px.funnel(sorted_value_counts_df_land10, x='Count', y='Boxen', title="Verfügbare Daten bei ländlichen SenseBoxen", template="plotly_dark")
 funnel_land_10.update_layout(title_x=0.5)
-funnel_city_10 = px.funnel(sorted_value_counts_df_city10, x='Count', y='Boxen', title="Verfügbare Daten bei städischen SenseBoxen")
+funnel_city_10 = px.funnel(sorted_value_counts_df_city10, x='Count', y='Boxen', title="Verfügbare Daten bei städischen SenseBoxen", template="plotly_dark")
 funnel_city_10.update_layout(title_x=0.5)
 #---------------------------------------------------------
 ##bereinigen,interpolieren,gruppieren von 
@@ -75,20 +75,20 @@ for idx in list_dataframes:
 ##Liniendiagram
 ###land-PM10
 result_land_pm10 = grouped_dataframes[0][[f'{col}_int' for col in columns_to_process]]
-fig1 = px.line(result_land_pm10, title="Luftqualität auf dem Land nach PM10")
+fig1 = px.line(result_land_pm10, title="Luftqualität auf dem Land nach PM10", template="plotly_dark")
 fig1.update_layout(title_x=0.5)
 ###city-PM10
 result_city_pm10 = grouped_dataframes[2][[f'{col}_int' for col in columns_to_process]]
-fig2 = px.line(result_city_pm10, title="Luftqualität in der Stadt nach PM10")
+fig2 = px.line(result_city_pm10, title="Luftqualität in der Stadt nach PM10", template="plotly_dark")
 fig2.update_layout(title_x=0.5)
 ###land-PM2.5
 result_land_pm2_5 = grouped_dataframes[1][[f'{col}_int' for col in columns_to_process]]
-fig3 = px.line(result_land_pm2_5, title="Luftqualität auf dem Land nach PM2.5")
+fig3 = px.line(result_land_pm2_5, title="Luftqualität auf dem Land nach PM2.5", template="plotly_dark")
 fig3.update_layout(title_x=0.5)
 ###city-PM2.5
 result_city_pm2_5 = grouped_dataframes[3][[f'{col}_int' for col in columns_to_process]]
 #---------------------------------------------------------
-fig4 = px.line(result_city_pm2_5, title="Luftqualität in der Stadt nach PM2.5")
+fig4 = px.line(result_city_pm2_5, title="Luftqualität in der Stadt nach PM2.5", template="plotly_dark")
 fig4.update_layout(title_x=0.5)
 ## Durchschnitt von Boxen
 avg_landpm10 = grouped_dataframes[0].groupby('datum')[columns_to_process].mean()
@@ -199,13 +199,25 @@ app.layout = html.Div([
         "align-items": "center",
         "gap": "20px"}),
     html.Div([
-        html.H3("Basic Analysis"),
+        html.H3("Analyse: PM10")
+    ], style={"text-align": "center"}),
+    html.Div([
         dash_table.DataTable(
             id="table",
             columns=[{"name": i, "id": i} for i in df_stats.columns],
-            data=df_stats.to_dict("records")
+            data=df_stats.to_dict("records"),
+            style_header={
+                'backgroundColor': 'rgb(30, 30, 30)',
+                'color': 'white',
+                'textAlign': 'center'
+            },
+            style_data={
+                'backgroundColor': 'rgb(50, 50, 50)',
+                'color': 'white',
+                'textAlign': 'center'
+            },
         )
-    ], style={"text-align": "center"}),
+    ]),
     html.Div([
         html.H3("Analyse: PM2.5")
     ], style={"text-align": "center"}),
@@ -230,7 +242,7 @@ app.layout = html.Div([
             ["land_PM10", "land_PM2_5", "stadt_PM10", "stadt_PM2_5"],
             value="land_PM10",
             id="select",
-            
+            style={'color': 'black', "background-color": "#111111"}
         )
     ], style={"text-align": "center"}),
     html.Div([
@@ -285,7 +297,7 @@ def update_graph(n,my_input_value):
         showlegend=True
         )
     fig = go.Figure(data=[trace_pm2_5, trace_pm10], layout=layout)
-    fig.update_layout(title_x=0.5)
+    fig.update_layout(title_x=0.5, template="plotly_dark")
     #fig = px.scatter(x=df_interactive["timestamp"], y=df_interactive["value1", "value0"], mode="lines+markers", title="Real-time Sensor Data")
     return fig
 #---------------------------------------------------
@@ -434,7 +446,7 @@ def update_prediction_graph(my_select_value):
     fig_predict.add_trace(go.Scatter(x=forecasts.index, y=forecasts['Saisonale naive'], mode='lines', name='Saisonale naive Forecast'))
     fig_predict.add_trace(go.Scatter(x=forecasts.index, y=forecasts['Exponentielle Glättung'], mode='lines', name='Exponentielle Glättung Forecast'))
 
-    fig_predict.update_layout(title_x=0.5)
+    fig_predict.update_layout(title_x=0.5, template="plotly_dark")
 
     mae_arith = mean_absolute_error(test, arith_predictions)
     mae_naive = mean_absolute_error(test, naive_predictions)
@@ -458,7 +470,7 @@ def update_prediction_graph(my_select_value):
             fig_json = f.read()
         fig_lstm = go.Figure(json.loads(fig_json))
 
-    fig_lstm.update_layout(title_x=0.5)
+    fig_lstm.update_layout(title_x=0.5, template="plotly_dark")
     # Grafik und Werte anzeigen
     return fig_predict, mae_arith, mae_naive, mae_seasonal_naive, mae_exp_smooth, fig_lstm
 #--------------------------------------------------
