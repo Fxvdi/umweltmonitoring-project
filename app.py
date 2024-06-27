@@ -60,7 +60,9 @@ sorted_value_counts_df_city10 = value_counts_df.sort_values(by='Count', ascendin
 #static figures
 #funnel: analyzing available Data (no Null-Values)
 funnel_land_10 = px.funnel(sorted_value_counts_df_land10, x='Count', y='Boxen', title="Verfügbare Daten bei ländlichen SenseBoxen")
+funnel_land_10.update_layout(title_x=0.5)
 funnel_city_10 = px.funnel(sorted_value_counts_df_city10, x='Count', y='Boxen', title="Verfügbare Daten bei städischen SenseBoxen")
+funnel_city_10.update_layout(title_x=0.5)
 #---------------------------------------------------------
 ##bereinigen,interpolieren,gruppieren von 
 grouped_dataframes = []
@@ -74,16 +76,20 @@ for idx in list_dataframes:
 ###land-PM10
 result_land_pm10 = grouped_dataframes[0][[f'{col}_int' for col in columns_to_process]]
 fig1 = px.line(result_land_pm10, title="Luftqualität auf dem Land nach PM10")
+fig1.update_layout(title_x=0.5)
 ###city-PM10
 result_city_pm10 = grouped_dataframes[2][[f'{col}_int' for col in columns_to_process]]
 fig2 = px.line(result_city_pm10, title="Luftqualität in der Stadt nach PM10")
+fig2.update_layout(title_x=0.5)
 ###land-PM2.5
 result_land_pm2_5 = grouped_dataframes[1][[f'{col}_int' for col in columns_to_process]]
 fig3 = px.line(result_land_pm2_5, title="Luftqualität auf dem Land nach PM2.5")
+fig3.update_layout(title_x=0.5)
 ###city-PM2.5
 result_city_pm2_5 = grouped_dataframes[3][[f'{col}_int' for col in columns_to_process]]
 #---------------------------------------------------------
 fig4 = px.line(result_city_pm2_5, title="Luftqualität in der Stadt nach PM2.5")
+fig4.update_layout(title_x=0.5)
 ## Durchschnitt von Boxen
 avg_landpm10 = grouped_dataframes[0].groupby('datum')[columns_to_process].mean()
 avg_landpm25 = grouped_dataframes[1].groupby('datum')[columns_to_process].mean()
@@ -126,8 +132,12 @@ fig_test.for_each_trace(lambda t: t.update(name=column_rename_dict[t.name]))
 #---------------------------------------------------------
 fig5 = px.line(avg_landpm10, x="datum", y="average_value", title="Durchschnittliche Luftqualität auf dem Land | PM10")
 fig6 = px.line(avg_landpm25, x="datum", y="average_value", title="Durchschnittliche Luftqualität auf dem Land | PM2.5")
-fig7 = px.line(avg_citypm10, x="datum", y="average_value")
-fig8 = px.line(avg_citypm25, x="datum", y="average_value")
+fig7 = px.line(avg_citypm10, x="datum", y="average_value", title="Durchschnittliche Luftqualität in der Stadt | PM2.5")
+fig8 = px.line(avg_citypm25, x="datum", y="average_value", title="Durchschnittliche Luftqualität in der Stadt | PM2.5")
+fig5.update_layout(title_x=0.5)
+fig6.update_layout(title_x=0.5)
+fig7.update_layout(title_x=0.5)
+fig8.update_layout(title_x=0.5)
 #---------------------------------------------------------
 df_stats = pd.read_csv("werte_daten/stats_df.csv")
 #---------------------------------------------------------
@@ -135,6 +145,10 @@ df_stats = pd.read_csv("werte_daten/stats_df.csv")
 app = Dash(__name__)
 
 app.layout = html.Div([
+        html.Link(
+        rel='stylesheet',
+        href='assets/style.css'  # Pfad zur CSS-Datei im assets-Ordner
+    ),
     #-----------------------------------------------------
     #Titel und Live-Tracking-Part
     html.Div([
@@ -142,14 +156,14 @@ app.layout = html.Div([
         html.H2("Live-Tracking")
     ], style = {"text-align": "center"}),
     html.Div([
-        html.Iframe(id="map", srcDoc= open("germany-boxes.html", "r").read(), width="100%", height="600")
-    ]),
+        html.Iframe(id="map", srcDoc= open("germany-boxes.html", "r").read(), width="95%", height="600")
+    ], style = {"text-align": "center"}),
     html.Div([
         "Live-Tracking BoxID: ",
         dcc.Input(id="my-input", value="5c4eee5235809500190463cc"),
         html.Br(),
         "(Achtung! Inaktive Boxen konnten nicht rausgefiltert werden - Bei Fehler, andere Box auswählen)"
-    ], style={"text-align": "center"}),
+    ], style={"text-align": "center", "font-size": "1.2em", "margin-top" : "0.5em"}),
     html.Div([
         dcc.Graph(id="live-graph"),
         dcc.Interval(
@@ -166,14 +180,24 @@ app.layout = html.Div([
     html.Div([
         dcc.Graph(id="available-data-land10", figure=funnel_land_10),
         dcc.Graph(id="available-data-city10", figure=funnel_city_10),
-    ], style={"display": "flex"}),
+    ], style={        
+        "display": "grid", 
+        "grid-template-columns": "1fr 1fr", 
+        "justify-content": "center",
+        "align-items": "center",
+        "gap": "20px"}),
     html.Div([
         html.H3("Analyse: PM10")
     ], style={"text-align": "center"}),
     html.Div([
         dcc.Graph(id="Stationen-Land-PM10", figure=fig1),
         dcc.Graph(id="Stationen-City-PM10", figure=fig2)
-    ], style={"display": "flex"}),
+    ], style={        
+        "display": "grid", 
+        "grid-template-columns": "1fr 1fr", 
+        "justify-content": "center",
+        "align-items": "center",
+        "gap": "20px"}),
     html.Div([
         html.H3("Basic Analysis"),
         dash_table.DataTable(
@@ -188,7 +212,12 @@ app.layout = html.Div([
     html.Div([
         dcc.Graph(id="Stationen-Land-PM2.5", figure=fig3),
         dcc.Graph(id="Stationen-City-PM2.5", figure=fig4)
-    ], style={"display": "flex"}),
+    ], style={        
+        "display": "grid", 
+        "grid-template-columns": "1fr 1fr", 
+        "justify-content": "center",
+        "align-items": "center",
+        "gap": "20px"}),
     html.Div([
         html.H3("Durchschnitt aller Boxen nach Attribut")
     ], style={"text-align": "center"}),
@@ -196,7 +225,7 @@ app.layout = html.Div([
         dcc.Graph(id="Average-of-Boxes-PM10", figure=fig_test),
     ]),
     html.Div([
-        html.H3("Vorhersage"),
+        html.H2("Vorhersage"),
         dcc.Dropdown(
             ["land_PM10", "land_PM2_5", "stadt_PM10", "stadt_PM2_5"],
             value="land_PM10",
@@ -208,15 +237,16 @@ app.layout = html.Div([
         dcc.Graph(id="prediction-graph")
     ]),
     html.Div([
-        html.H4("Mean Absolute Error"),
-
+        html.H3("Mean Squared Error (MSE)"),
+    ], style={"text-align": "center"}),
+    html.Div([
         html.Table([
             html.Tr([html.Td("Arithmetisches Mittel: "), html.Td(id='arith')]),
             html.Tr([html.Td("Naive Methode: "), html.Td(id='fool')]),
             html.Tr([html.Td("Saisonal Naiv"), html.Td(id='seasonal-fool')]),
             html.Tr([html.Td("exponentielle Glättung"), html.Td(id='exp-smooth')]),
         ]),
-    ], style={"text-align": "center"}),
+    ], className="centered-table", style={"display": "flex", "justify-content": "center", "align-items": "center"}),
     html.Div([
         html.H3("LSTM-Modell"),
     ], style={"text-align": "center"}),
@@ -247,6 +277,7 @@ def update_graph(n,my_input_value):
     df_interactive = pd.concat([df_interactive, pd.DataFrame([{"timestamp": timestamp, "value1": float(value1), "value0": float(value0)}])], ignore_index=True)
     trace_pm2_5 = go.Scatter(x=df_interactive["timestamp"], y=df_interactive["value1"], mode="lines+markers", name="PM2,5")
     trace_pm10 = go.Scatter(x=df_interactive["timestamp"], y=df_interactive["value0"], mode="lines+markers", name="PM10")
+    
     layout = go.Layout(
         title=f"Real-time Sensor Data {my_input_value}",
         xaxis=dict(title="Timestamp"), 
@@ -254,6 +285,7 @@ def update_graph(n,my_input_value):
         showlegend=True
         )
     fig = go.Figure(data=[trace_pm2_5, trace_pm10], layout=layout)
+    fig.update_layout(title_x=0.5)
     #fig = px.scatter(x=df_interactive["timestamp"], y=df_interactive["value1", "value0"], mode="lines+markers", title="Real-time Sensor Data")
     return fig
 #---------------------------------------------------
@@ -402,6 +434,8 @@ def update_prediction_graph(my_select_value):
     fig_predict.add_trace(go.Scatter(x=forecasts.index, y=forecasts['Saisonale naive'], mode='lines', name='Saisonale naive Forecast'))
     fig_predict.add_trace(go.Scatter(x=forecasts.index, y=forecasts['Exponentielle Glättung'], mode='lines', name='Exponentielle Glättung Forecast'))
 
+    fig_predict.update_layout(title_x=0.5)
+
     mae_arith = mean_absolute_error(test, arith_predictions)
     mae_naive = mean_absolute_error(test, naive_predictions)
     mae_seasonal_naive = mean_absolute_error(test, seasonal_naive_predictions)
@@ -423,6 +457,8 @@ def update_prediction_graph(my_select_value):
         with open("prediction_stadt_PM2_5.json", "r") as f:
             fig_json = f.read()
         fig_lstm = go.Figure(json.loads(fig_json))
+
+    fig_lstm.update_layout(title_x=0.5)
     # Grafik und Werte anzeigen
     return fig_predict, mae_arith, mae_naive, mae_seasonal_naive, mae_exp_smooth, fig_lstm
 #--------------------------------------------------
