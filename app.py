@@ -127,7 +127,7 @@ column_rename_dict = {
     "average_value_df4": "CityPM2_5"
 }
 
-fig_test = px.line(combined_df, x="datum", y=combined_df.columns[1:])
+fig_test = px.line(combined_df, x="datum", y=combined_df.columns[1:], template="plotly_dark")
 fig_test.for_each_trace(lambda t: t.update(name=column_rename_dict[t.name]))
 #---------------------------------------------------------
 fig5 = px.line(avg_landpm10, x="datum", y="average_value", title="Durchschnittliche Luftqualität auf dem Land | PM10")
